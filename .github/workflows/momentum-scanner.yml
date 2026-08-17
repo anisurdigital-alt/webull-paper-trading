@@ -1,0 +1,54 @@
+name: Small-Cap Momentum Scanner (Paper Trading)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (preview only, no real paper order placed)"
+        type: boolean
+        default: true
+
+  schedule:
+    # All times UTC. Currently mapped to 9:30 AM - 11:00 AM US EASTERN
+    # DAYLIGHT TIME (EDT, UTC-4). When US clocks change, swap this block for
+    # the EST block below (see README.md "Daylight saving" section).
+    #
+    # --- EDT (roughly mid-March to early November) ---
+    - cron: "30,45 13 * * 1-5"
+    - cron: "0,15,30,45 14 * * 1-5"
+    - cron: "0 15 * * 1-5"
+    #
+    # --- EST block (uncomment and comment out the EDT block above when US
+    #     clocks fall back; roughly early November to mid-March) ---
+    # - cron: "30,45 14 * * 1-5"
+    # - cron: "0,15,30,45 15 * * 1-5"
+    # - cron: "0 16 * * 1-5"
+
+jobs:
+  scan-and-trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scanner
+        env:
+          WEBULL_APP_KEY: ${{ secrets.WEBULL_APP_KEY }}
+          WEBULL_APP_SECRET: ${{ secrets.WEBULL_APP_SECRET }}
+          WEBULL_REGION: "us"
+          WEBULL_API_HOST: "api.sandbox.webull.com"
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATA_SOURCE_ID: ${{ secrets.NOTION_DATA_SOURCE_ID }}
+          # Manual runs: the workflow_dispatch checkbox wins.
+          # Scheduled (cron) runs: controlled by the repo Actions VARIABLE
+          # named DRY_RUN_DEFAULT (Settings -> Secrets and variables -> Actions
+          # -> Variables). Defaults to "true" (safe) if that variable isn't set.
+          DRY_RUN: ${{ github.event.inputs.dry_run || vars.DRY_RUN_DEFAULT || 'true' }}
+        run: python strategy.py
