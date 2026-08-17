@@ -1,0 +1,2 @@
+requests>=2.31.0
+git+https://github.com/webull-inc/webull-openapi-python-sdk.git@main#egg=webull
